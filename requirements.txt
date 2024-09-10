@@ -1,0 +1,6 @@
+torch
+tqdm
+accelerate
+transformers
+opencv-python
+opencv-contrib-python 
