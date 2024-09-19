@@ -26,23 +26,35 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import torch
 import torch.nn as nn 
 
 
 class GILoss(nn.Module):
     def __init__(self):
         super(GILoss, self).__init__() 
-        self.mse = nn.MSELoss(reduction='sum')
+        self.mse = nn.MSELoss()
     
-    def forward(self, pre_img, data_loader):
-        loss = 0
-        total_num = 0
-        for x, y in data_loader:
-            batch_size = x.shape[0]
-            total_num += batch_size
-            y = y / (800 * 1280)    # 数太大，计算一下平均值
-            y_pre = (pre_img * x).flatten(1).mean(dim=1)
-            loss += self.mse(y, y_pre)
-        loss /= total_num
-        return loss
+    def forward(self, out_x, dataset):
+        pattern, y_true = dataset.get_all()
+        out_y = nn.functional.conv2d(out_x, pattern, stride=1, padding='valid')
+        
+        #Normalization
+        mean_x = out_x.mean(dim=[0, 1, 2, 3], keepdim=True)
+        variance_x = out_x.var(dim=[0, 1, 2, 3], keepdim=True, unbiased=False)
+        out_x = (out_x - mean_x) / torch.sqrt(variance_x)
+
+        mean_y = out_y.mean(dim=[0, 1, 2, 3], keepdim=True)
+        variance_y = out_y.var(dim=[0, 1, 2, 3], keepdim=True, unbiased=False)
+        out_y = (out_y - mean_y) / torch.sqrt(variance_y)
+        
+        x_pred = out_x.squeeze(0)
+        y_pred = out_y.flatten(0)
+        
+        tv_h = torch.abs(x_pred[:, 1:, :] - x_pred[:, :-1, :]).sum()
+        tv_w = torch.abs(x_pred[:, :, 1:] - x_pred[:, :, :-1]).sum()
+        loss_TV = (tv_h + tv_w) / (1 * x_pred.shape[1] * x_pred.shape[2])
+        
+        loss = self.mse(y_pred, y_true) + 0.1 * loss_TV
+        return x_pred, loss
         

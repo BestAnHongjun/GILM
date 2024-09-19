@@ -34,23 +34,21 @@ from typing import Union, List, Tuple
 class PatchEmbed(nn.Module):
     def __init__(
         self, 
-        input_shape: Union[List, Tuple] = (800, 1280),
-        patch_size: int = 32, num_features: int = 768,
+        patch_size: int = 16, num_features: int = 768,
         device: torch.device = None,
         dtype: torch.dtype = None
     ):
         super(PatchEmbed, self).__init__() 
         device = device if device is not None else torch.device('cuda')
-        dtype = dtype if dtype is not None else torch.float16
+        dtype = dtype if dtype is not None else torch.float
         
-        self.num_patch = (input_shape[0] // patch_size) * (input_shape[1] // patch_size) # 40 * 25 = 1000
         self.proj = nn.Conv2d(1, num_features, kernel_size=patch_size, stride=patch_size, device=device, dtype=dtype)
         self.lnorm = nn.LayerNorm(num_features, device=device, dtype=dtype)
     
     def forward(self, x):
-        x = self.proj(x)    # [b, 1, 800, 1280] -> [b, num_features, 25, 40]
-        x = x.flatten(2)    # [b, num_features, 1000]
-        x = x.transpose(1, 2) # [b, 1000, num_features]
+        x = self.proj(x)
+        x = x.flatten(2)
+        x = x.transpose(1, 2)
         x = self.lnorm(x)
         return x
         

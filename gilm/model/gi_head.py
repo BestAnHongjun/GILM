@@ -34,23 +34,20 @@ from typing import Union, List, Tuple
 class GIHead(nn.Module):
     def __init__(
         self, 
-        input_shape: Union[List, Tuple] = (800, 1280),
-        patch_size: int = 32, num_features: int = 768,
+        patch_size: int = 16, num_features: int = 768,
         device: torch.device = None,
         dtype: torch.dtype = None
     ):
         super(GIHead, self).__init__() 
         device = device if device is not None else torch.device('cuda')
-        dtype = dtype if dtype is not None else torch.float16
+        dtype = dtype if dtype is not None else torch.float
         
-        self.input_shape = input_shape
         self.proj = nn.Linear(num_features, patch_size * patch_size, device=device, dtype=dtype)
         self.sigmoid = nn.Sigmoid()
     
-    def forward(self, x):
-        x = self.proj(x)    # [b, 1000, num_features] -> [b, 1000, 32 * 32]
+    def forward(self, x, target_shape: Union[List, Tuple] = (448, 448)):
+        x = self.proj(x)
         batch_size = x.shape[0]
-        x = x.reshape(batch_size, 1, self.input_shape[0], self.input_shape[1])
-        x = self.sigmoid(x) * 255
+        x = x.reshape(batch_size, 1, target_shape[0], target_shape[1])
         return x
         

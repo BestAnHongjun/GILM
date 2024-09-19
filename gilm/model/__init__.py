@@ -28,3 +28,4 @@
 
 from .gilm import GILM
 from .loss import GILoss
+from .unet import LatentUNet
